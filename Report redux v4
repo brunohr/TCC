@@ -1,0 +1,1600 @@
+
+```{r}
+####RECOMENDO COPIAR E COLAR EM UM RMARKDOWN
+####também disponível em https://github.com/brunohr/TCC
+```
+
+```{r}
+"%!in%" = Negate("%in%")
+
+library(tidyverse)
+# library(readr)
+# library(dplyr)
+# library(ggplot2)
+library(ggrepel)
+library(ggpp)
+library(reshape2)
+library(geobr)
+library(descr)
+library(lavaan)
+library(pcalg)
+# devtools::install_github("bips-hb/micd")
+library(micd)
+# BiocManager::install(c('graph', 'RBGL', 'Rgraphviz'))
+library(bnlearn)
+```
+
+# DADOS
+
+## LEITURA DOS DADOS
+
+```{r}
+# # aumentando tempo de conexão do R com o servidor (segundos)
+options(timeout = max(600, getOption("timeout")))
+# 
+# #baixando o arquivo zipado direto do INEP
+temp <- tempfile()
+download.file("https://download.inep.gov.br/microdados/microdados_enem_2021.zip", temp)
+# # descompactando o arquivo
+data <- read.table(unz(temp, "DADOS/MICRODADOS_ENEM_2021.csv"))
+
+enem0 =
+  read_delim(unz("microdados_enem_2021.zip", "DADOS/MICRODADOS_ENEM_2021.csv"),
+             delim = ";",
+             escape_double = FALSE,
+             col_types = cols(
+               NU_INSCRICAO = col_factor(),
+               TP_FAIXA_ETARIA = col_factor(
+                 c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")),
+               TP_SEXO = col_factor(c("M", "F")),
+               TP_ESTADO_CIVIL = col_factor(c("0", "1", "2", "3", "4", "5")),
+               TP_NACIONALIDADE = col_factor(c("0", "1", "2", "3", "4")),
+               TP_ST_CONCLUSAO = col_factor(c("1", "2", "3", "4")),
+               TP_ANO_CONCLUIU = col_factor(c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15")),
+               TP_ESCOLA = col_factor(c("1", "2", "3")),
+               TP_ENSINO = col_factor(c("1", "2")),
+               IN_TREINEIRO = col_factor(c("1", "0")),
+               TP_DEPENDENCIA_ADM_ESC = col_factor(c("1", "2", "3", "4")),
+               TP_LOCALIZACAO_ESC = col_factor(c("1", "2")),
+               TP_SIT_FUNC_ESC = col_factor(c("1", "2", "3", "4")),
+               CO_MUNICIPIO_PROVA = col_factor(),
+               CO_UF_PROVA = col_factor(),
+               TP_PRESENCA_CN = col_factor(c("0", "1", "2")),
+               TP_PRESENCA_CH = col_factor(c("0", "1", "2")),
+               TP_PRESENCA_LC = col_factor(c("0", "1", "2")),
+               TP_PRESENCA_MT = col_factor(c("0", "1", "2")),
+               CO_PROVA_CN = col_factor(c("909", "910", "911", "912",
+                                          "915", "916", "917", "989",
+                                          "990", "991", "992", "996",
+                                          "1011", "1012", "1013", "1014",
+                                          "1045", "1046", "1047", "1048", "1052")),
+               CO_PROVA_CH = col_factor(c("879", "880", "881", "882",
+                                          "885", "886", "887", "959",
+                                          "960", "961", "962", "966",
+                                          "999", "1000", "1001", "1002",
+                                          "1015", "1016", "1017", "1018", "1022")),
+               CO_PROVA_LC = col_factor(c("889", "890", "891", "892",
+                                          "895", "896", "897", "969",
+                                          "970", "971", "972", "976",
+                                          "1003", "1004", "1005", "1006",
+                                          "1025", "1026", "1027", "1028", "1032")),
+               CO_PROVA_MT = col_factor(c("899", "900", "901", "902",
+                                          "905", "906", "907", "979",
+                                          "980", "981", "982", "986",
+                                          "1007", "1008", "1009", "1010",
+                                          "1035", "1036", "1037", "1038", "1042")),
+               TP_LINGUA = col_factor(c("0", "1")),
+               TP_STATUS_REDACAO = col_factor(c("1", "2", "3", "4", "5",
+                                                "6", "7", "8", "9")),
+               Q001 = col_factor(c("A", "B", "C", "D", "E", "F", "G", "H")),
+               Q002 = col_factor(c("A", "B", "C", "D", "E", "F", "G", "H")),
+               Q003 = col_factor(c("A", "B", "C", "D", "E", "F"),
+                                 ordered = T),
+               Q004 = col_factor(c("A", "B", "C", "D", "E", "F"),
+                                 ordered = T),
+               Q005 = col_factor(c("0", "1", "2", "3", "4", "5", "6", "7",
+                                   "8", "9", "10", "11", "12", "13", "14",
+                                   "15", "16", "17", "18", "19", "20"),
+                                 ordered = T),
+               Q006 = col_factor(c("A", "B", "C", "D", "E", "F", "G", "H",
+                                   "I", "J", "K", "L", "M", "N", "O", "P", "Q"),
+                                 ordered = T),
+               Q007 = col_factor(c("A", "B", "C", "D"),
+                                 ordered = T),
+               Q008 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q009 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q010 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q011 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q012 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q013 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q014 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q015 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q016 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q017 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q018 = col_factor(c("A", "B"),
+                                 ordered = T),
+               Q019 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q020 = col_factor(c("A", "B"),
+                                 ordered = T),
+               Q021 = col_factor(c("A", "B"),
+                                 ordered = T),
+               Q022 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q023 = col_factor(c("A", "B"),
+                                 ordered = T),
+               Q024 = col_factor(c("A", "B", "C", "D", "E"),
+                                 ordered = T),
+               Q025 = col_factor(c("A", "B"),
+                                 ordered = T)),
+             trim_ws = TRUE)
+unlink(temp)
+
+enem1 = enem0 %>%
+  mutate(NOTA_FINAL = (NU_NOTA_REDACAO + NU_NOTA_CH + NU_NOTA_CN + ## nota final
+                         NU_NOTA_LC +  NU_NOTA_MT)/5, ## nota final
+         
+         criter_aux = ifelse(Q008 == "A", 0, ## banheiro
+                             ifelse(Q008 == "B", 3, ## banheiro
+                                    ifelse(Q008 == "C", 7, ## banheiro
+                                           ifelse(Q008 == "D", 10, ## banheiro
+                                                  ifelse(Q008 == "E", 14, 0))))) +
+           ifelse(Q007 == "A", 0, ## empregado doméstico
+                  ifelse(Q007 == "B", 3, ## empregado doméstico
+                         ifelse(Q007 == "C", 7, ## empregado doméstico
+                                ifelse(Q007 == "D", 10, ## empregado doméstico
+                                       ifelse(Q007 == "E", 13, 0))))) + 
+           ifelse(Q010 == "A", 0, ## carro
+                  ifelse(Q010 == "B", 3, ## carro
+                         ifelse(Q010 == "C", 5, ## carro
+                                ifelse(Q010 == "D", 8, ## carro
+                                       ifelse(Q010 == "E", 11, 0))))) + ## carro
+           ifelse(Q024 == "A", 0, ## carro
+                  ifelse(Q024 == "B", 3, ## carro
+                         ifelse(Q024 == "C", 6, ## carro
+                                ifelse(Q024 == "D", 8, ## carro
+                                       ifelse(Q024 == "E", 11, 0))))) + ## computador
+           ifelse(Q017 == "A", 0, ## lava louça
+                  ifelse(Q017 == "B", 3, ## lava louça
+                         ifelse(Q017 == "C", 6, ## lava louça
+                                ifelse(Q017 == "D", 8, ## lava louça
+                                       ifelse(Q008 == "E", 11, 0))))) + ## lava louça
+           ifelse(Q012 == "A", 0, ## geladeira
+                  ifelse(Q012 == "B", 2, ## geladeira
+                         ifelse(Q012 == "C", 3, ## geladeira
+                                ifelse(Q012 == "D", 5, ## geladeira
+                                       ifelse(Q012 == "E", 5, 0))))) + ## geladeira
+           ifelse(Q013 == "A", 0, ## freezer
+                  ifelse(Q013 == "B", 2, ## freezer
+                         ifelse(Q013 == "C", 4, ## freezer
+                                ifelse(Q013 == "D", 6, ## freezer
+                                       ifelse(Q013 == "E", 6, 0))))) + ## freezer
+           ifelse(Q014 == "A", 0, ## lava roupa
+                  ifelse(Q014 == "B", 2, ## lava roupa
+                         ifelse(Q014 == "C", 4, ## lava roupa
+                                ifelse(Q014 == "D", 6, ## lava roupa
+                                       ifelse(Q014 == "E", 6, 0))))) + ## lava roupa
+           ifelse(Q013 == "A", 0, ## dvd
+                  ifelse(Q013 == "B", 1, ## dvd
+                         ifelse(Q013 == "C", 3, ## dvd
+                                ifelse(Q013 == "D", 4, ## dvd
+                                       ifelse(Q013 == "E", 6, 0))))) + ## dvd
+           ifelse(Q016 == "A", 0, ## microondas
+                  ifelse(Q016 == "B", 2, ## microondas
+                         ifelse(Q016 == "C", 4, ## microondas
+                                ifelse(Q016 == "D", 4, ## microondas
+                                       ifelse(Q016 == "E", 4, 0))))) + ## microondas
+           ifelse(Q011 == "A", 0, ## motocicleta
+                  ifelse(Q011 == "B", 1, ## motocicleta
+                         ifelse(Q011 == "C", 3, ## motocicleta
+                                ifelse(Q011 == "D", 3, ## motocicleta
+                                       ifelse(Q011 == "E", 3, 0))))) + ## motocicleta
+           ifelse(Q015 == "A", 0, ## secadora roupa
+                  ifelse(Q015 == "B", 2, ## secadora roupa
+                         ifelse(Q015 == "C", 2, ## secadora roupa
+                                ifelse(Q015 == "D", 2, ## secadora roupa
+                                       ifelse(Q015 == "E", 2, 0))))) + ## secadora roupa
+           ifelse(Q001 %in% c("A", "B"), 0, ## escolarida chefe da casa
+                  ifelse(Q001 %in% c("C"), 1, ## escolarida chefe da casa
+                         ifelse(Q001 %in% c("D"), 2, ## escolarida chefe da casa
+                                ifelse(Q001 %in% c("E"), 4, ## escolarida chefe da casa
+                                       ifelse(Q001 %in% c("F", "G"), 7, 0)))))
+  ) %>%
+  mutate(CRITERIO = factor(ifelse(criter_aux >= 45, "A",
+                                  ifelse(criter_aux >= 38, "B1",
+                                         ifelse(criter_aux >= 29, "B2",
+                                                ifelse(criter_aux >= 23, "C1",
+                                                       ifelse(criter_aux >= 17, "C2",
+                                                              ifelse(criter_aux >= 0,
+                                                                     "DE")))))),
+                           ordered = T),
+         CRITERIO2 = factor(ifelse(criter_aux >= 45, "A",
+                                   ifelse(criter_aux >= 29, "B",
+                                          ifelse(criter_aux >= 17, "C",
+                                                 ifelse(criter_aux >= 0, "DE")))),
+                            ordered = T),
+         REGIAO = factor(
+           ifelse(SG_UF_ESC %in% c("RO", "AC", "AM", "RR", "PA", "AP", "TO"), "Norte",
+                  ifelse(SG_UF_ESC %in% c("MA", "PI", "CE", "RN", "PB", "PE", "AL", "SE", "BA"),
+                         "Nordeste",
+                         ifelse(SG_UF_ESC %in% c("MG", "ES", "RJ", "SP"), "Sudeste",
+                                ifelse(SG_UF_ESC %in% c("PR", "SC", "RS"), "Sul",
+                                       ifelse(SG_UF_ESC %in% c("MS", "MT", "GO", "DF"), "Centro-Oeste",
+                                              NA))))))
+  )
+
+enem1$IN_TREINEIRO <- factor(enem1$IN_TREINEIRO, levels = c(1,0),  labels=c('Sim', 'Não'))
+
+enem1$TP_DEPENDENCIA_ADM_ESC <- factor(enem1$TP_DEPENDENCIA_ADM_ESC, levels = c(1,2,3,4),
+                                       labels=c('Federal',
+                                                'Estadual',
+                                                'Municipal',
+                                                'Privada'))
+
+enem1$TP_LOCALIZACAO_ESC <- factor(enem1$TP_LOCALIZACAO_ESC, levels = c(1,2), labels=c('Urbana', 'Rural'))
+
+enem1$TP_SIT_FUNC_ESC <- factor(enem1$TP_SIT_FUNC_ESC, levels = c(1,2,3,4),
+                                labels=c('Em atividade',
+                                         'Paralisada',
+                                         'Extinta',
+                                         'Escola extinta em anos anteriores'))
+
+enem1$TP_SEXO <- factor(enem1$TP_SEXO, levels = c('M', 'F'), labels=c('Masculino', 'Feminino'))
+
+enem1$TP_COR_RACA <- factor(enem1$TP_COR_RACA, levels = c(0,1,2,3,4,5,6),
+                            labels=c('Não declarado',
+                                     'Branca', 'Preta',
+                                     'Parda', 'Amarela',
+                                     'Indígena',
+                                     'Não dispõe da informação'))
+
+enem1$TP_ST_CONCLUSAO <- factor(enem1$TP_ST_CONCLUSAO, levels = c(1,2,3,4), 
+                                labels=c('Já concluí o Ensino Médio',
+                                         'Estou cursando e concluirei o Ensino Médio em 2021',
+                                         'Estou cursando e concluirei o Ensino Médio após 2021',
+                                         'Não concluí e não estou cursando o Ensino Médio'))
+
+enem1$TP_ANO_CONCLUIU <- factor(enem1$TP_ANO_CONCLUIU, levels = c(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15),
+                                labels=c('Não informado', '2020', '2019', '2018', '2017', '2016',
+                                         '2015', '2014', '2013',
+                                         '2012', '2011', '2010',
+                                         '2009', '2008', '2007',
+                                         'Anterior a 2007'))
+
+enem1$TP_ESCOLA <- factor(enem1$TP_ESCOLA, levels = c(1,2,3),
+                          labels=c('Não respondeu',
+                                   'Pública',
+                                   'Privada'))
+
+enem1$TP_ENSINO <- factor(enem1$TP_ENSINO, levels = c(1,2),
+                          labels=c('Ensino Regular',
+                                   'Educação Especial - Modalidade Substitutiva'))
+
+
+enem1$TP_PRESENCA_CN <- factor(enem1$TP_PRESENCA_CN, levels = c(0,1,2),
+                               labels=c('Faltou à prova',
+                                        'Presente na prova',
+                                        'Eliminado na prova'))
+
+enem1$TP_PRESENCA_CH <- factor(enem1$TP_PRESENCA_CH, levels = c(0,1,2),
+                               labels=c('Faltou à prova',
+                                        'Presente na prova',
+                                        'Eliminado na prova'))
+
+enem1$TP_PRESENCA_LC <- factor(enem1$TP_PRESENCA_LC, levels = c(0,1,2),
+                               labels=c('Faltou à prova',
+                                        'Presente na prova',
+                                        'Eliminado na prova'))
+
+enem1$TP_PRESENCA_MT <- factor(enem1$TP_PRESENCA_MT, levels = c(0,1,2),
+                               labels=c('Faltou à prova',
+                                        'Presente na prova',
+                                        'Eliminado na prova'))
+
+enem1$TP_STATUS_REDACAO <- factor(enem1$TP_STATUS_REDACAO, levels = c(1,2,3,4,5,6,7,8,9),
+                                  labels=c('Sem problemas',
+                                           'Anulada', 'Cópia Texto Motivador',
+                                           'Em Branco', 'Fere Direitos Humanos',
+                                           'Fuga ao tema',
+                                           'Não atendimento ao tipo',
+                                           'Texto insuficiente',
+                                           'Parte desconectada'))
+
+# Na sua residência tem acesso à Internet?
+enem1$Q025 <- factor(enem1$Q025, levels = c('A', 'B'),
+                     labels=c('Não', 'Sim'))
+```
+
+
+## FILTROS
+
+```{r}
+enem = enem1 %>% 
+  filter(
+    #considerando presença na prova de linguagens 
+    TP_PRESENCA_LC == 1, #"Presente na prova"
+    
+    #considerando presença na prova de matemática 
+    TP_PRESENCA_MT == 1, #"Presente na prova"
+    
+    #considerando presença na prova de ciências da natureza
+    TP_PRESENCA_CN == 1, #"Presente na prova"
+    
+    #considerando presença na prova de ciências humanas
+    TP_PRESENCA_CH == 1, #"Presente na prova"
+    
+    #considerando apenas escolas em atividade
+    TP_SIT_FUNC_ESC == 1, #"Em atividade"
+    
+    #removendo quem não está fazendo o enem pra valer
+    IN_TREINEIRO == 0, #"Não"
+    
+    #considerando apenas os que já concluíram
+    #ou concluirão o ensino médio no mesmo ano desse enem 2021
+    TP_ST_CONCLUSAO %in% c("Já concluí o Ensino Médio", "Estou cursando e concluirei o Ensino Médio em 2021"),
+    
+    #removendo escolas federais e não respostas no tipo de escola
+    #e garantindo que o tipo de escola condiz com a administração
+    (TP_ESCOLA == "Pública" & TP_DEPENDENCIA_ADM_ESC %in% c("Estadual", "Municipal")) |
+      (TP_ESCOLA == "Privada" & TP_DEPENDENCIA_ADM_ESC == "Privada"),
+    
+    #apenas participante no ensino regular
+    TP_ENSINO == "Ensino Regular"
+  )
+```
+
+## REMOVENDO VARIÁVEIS PARA ETAPA FUTURA
+
+```{r}
+enem2 = enem %>%
+  select(NOTA_FINAL, TP_ESCOLA, TP_SEXO, TP_COR_RACA, 
+         REGIAO, CRITERIO, 
+         Q025,
+         Q001,
+         Q002,
+         TP_LOCALIZACAO_ESC
+  ) %>%
+  rename(ESC = TP_ESCOLA,
+         COR = TP_COR_RACA,
+         REG = REGIAO,
+         CRIT = CRITERIO,
+         NET = Q025,
+         SEX = TP_SEXO,
+         NOTA = NOTA_FINAL,
+         LOC = TP_LOCALIZACAO_ESC
+  )
+
+enem3 = enem2 %>% select(-SEX, -LOC, -NET)
+
+enem4 = enem3 %>% select(-Q001)
+```
+
+
+# AED
+
+## Frequencia por tipo de escola
+
+```{r}
+### Frequencia por tipo de escola
+
+enem %>%
+  group_by(TP_DEPENDENCIA_ADM_ESC) %>%
+  summarise(n = n()) %>%
+  mutate(freq = round(100*n / sum(n), 2))
+
+enem %>%
+  group_by(TP_ESCOLA) %>%
+  summarise(n = n()) %>%
+  mutate(freq = round(100*n / sum(n), 2))
+```
+
+## Nota média por competência, por tipo da escola
+
+```{r}
+### Nota média geral, por tipo da escola
+enem %>%
+  group_by(TP_ESCOLA) %>% 
+  summarise(NOTA_FINAL = mean(NOTA_FINAL), PORTUGUES = mean(NU_NOTA_LC), MATEMATICA = mean(NU_NOTA_MT), CN = mean(NU_NOTA_CN), CH = mean(NU_NOTA_CH), REDACAO = mean(NU_NOTA_REDACAO)) %>%
+  melt("TP_ESCOLA")%>%
+  group_by(variable, TP_ESCOLA) %>%
+  ggplot(aes(x = variable, y = value, group = TP_ESCOLA, fill = TP_ESCOLA)) +
+  geom_bar(stat = "identity", position = position_dodge(0.9)) +
+  geom_text(aes(label = round(..y.., 2)), position = position_dodge(.9),
+            fontface = "bold", vjust = 0) +
+  ggtitle(NULL) +
+  scale_y_continuous(limits = c(0, 1000), name = "Nota Média") +
+  # scale_x_discrete(name = "Competência") +
+  theme_bw() +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        legend.background = element_rect(color = "transparent", fill = "transparent")) +
+  # theme(legend.position = "none") +
+  labs(x = "Competência")
+```
+
+## Porcentagem da renda por tipo de escola
+
+```{r}
+### Porcentagem da renda por tipo de escola
+enem %>%
+  ggplot(aes(x = CRITERIO, group = TP_ESCOLA, fill = TP_ESCOLA)) +
+  geom_bar(aes(y = ..prop.., fill = TP_ESCOLA), stat = "count", position = 'dodge') +
+  geom_text(aes(label = scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..], accuracy = .01), y = ..prop..),
+            stat = "count",
+            position = position_dodge(.9),
+            fontface = "bold",
+            vjust = 0) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        # legend.background = element_rect(color = "transparent", fill = "transparent")
+        ) +
+  # guides(color = guide_legend(nrow = 1)) +
+  labs(x = "CRITERIO", y = "prop") #+
+# labs(fill = "Tipo de escola")
+```
+
+## Nota por região IBGE, por tipo de escola
+
+```{r}
+### Nota por região IBGE, por tipo de escola
+
+enem %>%
+  group_by(REGIAO, TP_ESCOLA) %>%
+  summarise(NOTA = mean(NOTA_FINAL)) %>%
+  ggplot(aes(x = REGIAO, y = NOTA, fill = TP_ESCOLA)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_bw() +
+  scale_y_continuous(limits = c(0, 1000), name = "Nota Média") +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        legend.background = element_rect(color = "transparent", fill = "transparent")) +
+  # guides(color = guide_legend(nrow = 1)) +
+  labs(x = "REGIAO") +
+  # ggtitle("Nota média por tipo de escola e região IBGE") +
+  geom_text(aes(label = round(NOTA, 2)), position = position_dodge(.9),
+            fontface = "bold", vjust = 0)
+```
+
+## Nota por critério, por tipo de escola
+
+```{r}
+### Nota por critério brasil, por tipo de escola
+
+enem %>%
+  group_by(TP_ESCOLA, CRITERIO) %>%
+  summarise(NOTA = mean(NOTA_FINAL)) %>%
+  ggplot(aes(x = TP_ESCOLA, y = NOTA, fill = CRITERIO)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_bw() +
+  scale_y_continuous(limits = c(0, 1000), name = "Nota Média") +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        legend.background = element_rect(color = "transparent", fill = "transparent")) +
+  # guides(color = guide_legend(nrow = 1)) +
+  labs(x = "REGIAO") +
+  # ggtitle("Nota média por tipo de escola e região IBGE") +
+  geom_text(aes(label = round(NOTA, 2)), position = position_dodge(.9),
+            fontface = "bold", vjust = 0)
+```
+
+
+## Critério por região e nota por critério por região
+
+```{r}
+### a. Critério por Região v1
+enem %>%
+  ggplot(aes(x = REGIAO, group = CRITERIO, fill = CRITERIO)) +
+  geom_bar(aes(y = ..prop.., fill = CRITERIO), stat = "count", position = "dodge") +
+  geom_text(aes(label = scales::percent(..prop.., accuracy = .01), y = ..prop..),
+            stat = "count",
+            position = position_dodge(.95), vjust = 0,
+            fontface = "bold") +
+  ggtitle("Critério por Região") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        legend.background = element_rect(color = "transparent", fill = "transparent")) +
+  # guides(color = guide_legend(nrow = 1)) +
+  labs(x = "REGIAO", y = "prop por Classe", title = NULL) #+
+# labs(fill = "Tipo de escola")
+
+### a. Critério por região v2
+
+enem %>%
+  ggplot(aes(x = REGIAO, group = CRITERIO, fill = CRITERIO)) +
+  geom_bar(aes(y = ..count../tapply(..count.., ..x.. ,sum)[..x..]), stat = "count", position = "dodge") +
+  geom_text(aes(label = scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..], accuracy = .01), y = ..count../tapply(..count.., ..x.. ,sum)[..x..]),
+            stat = "count",
+            position = position_dodge(.95),
+            fontface = "bold",
+            vjust = 0) +
+  ggtitle("a. Proporção de Critério Brasil por Região IBGE") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        legend.background = element_rect(color = "transparent", fill = "transparent")) +
+  # guides(color = guide_legend(nrow = 1)) +
+  labs(x = "REGIAO", y = "prop") #+
+# labs(fill = "Tipo de escola")
+```
+
+```{r}
+### b. Nota por Critério Brasil, por região
+
+enem %>%
+  group_by(REGIAO, CRITERIO) %>%
+  summarise(NOTA = mean(NOTA_FINAL)) %>%
+  ggplot(aes(x = REGIAO, y = NOTA, fill = CRITERIO)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  # scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+  # facet_wrap(~ TP_ESCOLA) +
+  theme_bw() +
+  # scale_x_discrete(name = "") +
+  scale_y_continuous(limits = c(0, 1000), name = "Nota Média") +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        legend.background = element_rect(color = "transparent", fill = "transparent")) +
+  # guides(color = guide_legend(nrow = 1)) +
+  labs(x = "REGIAO") +
+  ggtitle("b. Nota média por Critério Brasil") +
+  geom_text(aes(label = round(NOTA, 2)), position = position_dodge(.9),
+            fontface = "bold", vjust = 0)
+```
+
+## Nota por Critério Brasil, por tipo de escola
+
+```{r}
+### Nota por Critério Brasil, por tipo de escola
+enem %>%
+  group_by(CRITERIO, TP_ESCOLA) %>%
+  summarise(NOTA = mean(NOTA_FINAL)) %>%
+  ggplot(aes(x = CRITERIO, y = NOTA, fill = TP_ESCOLA)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  # scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+  # facet_wrap(~ TP_ESCOLA) +
+  theme_bw() +
+  scale_y_continuous(limits = c(0, 1000), name = "Nota Média") +
+  theme(legend.position = c(.5, .95),
+        legend.title = element_blank(),
+        legend.direction = "horizontal",
+        legend.background = element_rect(color = "transparent", fill = "transparent")) +
+  # theme(legend.position = "none") +
+  labs(x = "CRITERIO") +
+  # ggtitle("Nota média por tipo de escola e Critério Brasil") +
+  geom_text(aes(label = round(NOTA, 2)), position = position_dodge(.9),
+            fontface = "bold", vjust = 0)
+```
+
+
+## gráfico coroplético
+
+```{r}
+### gráfico coroplético
+
+cidades = read_municipality() %>% mutate(code_muni = as.factor(code_muni))
+estados = read_state() %>% mutate(CO_UF_ESC = code_state)
+regioes = read_region() %>% mutate(REGIAO = factor(name_region))
+```
+
+### por estado
+
+```{r}
+### por estado
+mapabr1 = merge(estados, enem %>%
+                  group_by(CO_UF_ESC) %>%
+                  summarise(NOTA = mean(NOTA_FINAL)), by = "CO_UF_ESC", all = T) %>%
+  ggplot(aes(geometry = geometry)) + 
+
+  geom_sf(aes(fill = NOTA), 
+          color = "transparent", size = 0.0
+  ) +
+  # facet_wrap(~TP_ESCOLA) + 
+  scale_fill_gradient(low = "red", high = "green", 
+                      na.value = "white", name = "Nota média") +
+  theme_bw() +
+  # scale_fill_distiller(palette = "Reds", limits=c(0, 1000),
+  # name="Code_muni") + 
+  geom_text(aes(label = abbrev_state),
+            stat = "sf_coordinates",
+            # fontface = "bold"
+  ) +
+  theme(panel.grid = element_line(colour = "transparent"),
+        panel.background = element_blank(), axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = element_blank(), y = element_blank()) +
+  ggtitle("a. Nota média por estado")
+```
+
+### por regiao
+
+```{r}
+### por regiao
+mapabr2 = merge(regioes %>% select(-c(name_region, code_region)), enem %>%
+                  group_by(REGIAO) %>%
+                  summarise(NOTA = mean(NOTA_FINAL)), by = "REGIAO", all = T) %>%
+  ggplot(aes(geometry = geometry)) + 
+  geom_sf(aes(fill = NOTA), 
+          color = "transparent", size = 0.0) +
+  scale_fill_gradient(low = "red", high = "green", 
+                      na.value = "white", name = "Nota média") +
+  theme_bw() +
+  geom_text(aes(label = REGIAO),
+            stat = "sf_coordinates",
+            # fontface = "bold"
+  ) +
+  theme(panel.grid = element_line(colour = "transparent"),
+        panel.background = element_blank(), axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = element_blank(), y = element_blank()) +
+  ggtitle("b. Nota média por região")
+
+gridExtra::grid.arrange(mapabr1, mapabr2, ncol = 2)
+```
+
+### nota por estado
+
+```{r}
+### nota por estado
+
+enem %>% group_by(SG_UF_ESC) %>% summarise(mean(NOTA_FINAL)) %>% View()
+```
+
+## TESTES DE MÉDIA
+
+```{r}
+dms = function(x1, x2, a = .05)
+{
+  teste = aov(x1 ~ x2)
+  aux = sum(1/summary(droplevels(x2)))
+  QMRes = sum(teste$residuals^2)/teste$df.residual
+  dms = stats::qtukey(p = (1-a),
+                      df = teste$df.residual,
+                      nmeans = length(levels(droplevels(x2)))) * 
+    sqrt((QMRes/2) * (1/aux))
+  return(dms)
+}
+```
+
+### Nota por tipo de escola
+
+```{r}
+#### Nota por tipo de escola
+
+enem %>% group_by(TP_ESCOLA) %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ TP_ESCOLA, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(TP_ESCOLA) %>%
+  ggplot(aes(x = reorder(TP_ESCOLA, NOTA_FINAL, FUN = median, decreasing = T), y = NOTA_FINAL, fill = reorder(TP_ESCOLA, NOTA_FINAL, FUN = median, decreasing = T))) +
+  geom_boxplot() +
+  theme_bw() +
+  labs(x = "TP_ESCOLA") +
+  theme(legend.position = "none")
+```
+
+### Nota por cor/raça
+
+```{r}
+#### Nota por cor/raça
+enem %>% group_by(TP_COR_RACA) %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ TP_COR_RACA, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(TP_COR_RACA) %>%
+  ggplot(aes(x = reorder(TP_COR_RACA, NOTA_FINAL, FUN = median, decreasing = T), y = NOTA_FINAL, fill = reorder(TP_COR_RACA, NOTA_FINAL, FUN = median, decreasing = T))) +
+  geom_boxplot() +
+  theme_bw() +
+  labs(x = "TP_COR_RACA") +
+  theme(legend.position = "none")
+
+## agrupando cor/raça != branca
+enem %>%
+  mutate(COR2 = ifelse(TP_COR_RACA != "Branca", "Não branca", "Branca")) %>%
+  group_by(COR2) %>%
+  ggplot(aes(x = reorder(COR2, NOTA_FINAL, FUN = median, decreasing = T), y = NOTA_FINAL, fill = reorder(COR2, NOTA_FINAL, FUN = median, decreasing = T))) +
+  geom_boxplot() +
+  theme_bw() +
+  labs(x = "COR2") +
+  theme(legend.position = "none")
+```
+
+### Nota por sexo
+
+```{r}
+#### Nota por sexo
+enem %>% group_by(TP_SEXO) %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ TP_SEXO, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(TP_SEXO) %>%
+  ggplot(aes(x = TP_SEXO, y = NOTA_FINAL, fill = TP_SEXO)) +
+  geom_boxplot() +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = c("#00BFC4", "#F8766D"))
+```
+
+### Nota por região
+
+```{r}
+#### Nota por região
+enem %>% group_by(REGIAO)  %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ REGIAO, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(REGIAO) %>%
+  ggplot(aes(x = reorder(REGIAO, NOTA_FINAL, FUN = median, decreasing = T), y = NOTA_FINAL, fill = reorder(REGIAO, NOTA_FINAL, FUN = median, decreasing = T))) +
+  geom_boxplot() +
+  theme_bw() +
+  labs(x = "REGIAO") +
+  theme(legend.position = "none")
+```
+
+### Nota por Critério Brasil
+
+```{r}
+#### Nota por Critério Brasil
+
+enem %>% group_by(CRITERIO) %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ CRITERIO, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(CRITERIO) %>%
+  ggplot(aes(x = CRITERIO, y = NOTA_FINAL, fill = CRITERIO)) +
+  geom_boxplot() +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+### Nota por acesso à internet
+
+```{r}
+#### Nota por acesso à internet
+
+enem %>% group_by(Q025)  %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ Q025, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(Q025) %>%
+  ggplot(aes(x = reorder(Q025, NOTA_FINAL, FUN = median, decreasing = T), y = NOTA_FINAL), fill = Q025) +
+  geom_boxplot(aes(fill = Q025)) +
+  theme_bw() +
+  labs(x = "Q025") +
+  scale_fill_manual(values = c("#00BFC4", "#F8766D")) +
+  theme(legend.position = "none")
+```
+
+### Nota por escolaridade do pai
+
+```{r}
+#### Nota por escolaridade do pai
+
+enem %>% group_by(Q001)  %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ Q001, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(Q001) %>%
+  ggplot(aes(x = Q001, y = NOTA_FINAL, fill = Q001)) +
+  geom_boxplot() +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+### Nota por escolaridade da mãe
+
+```{r}
+#### Nota por escolaridade da mãe
+
+enem %>% group_by(Q002)  %>%
+  summarise(mean(NOTA_FINAL), median(NOTA_FINAL), sd(NOTA_FINAL))
+
+teste = aov(NOTA_FINAL ~ Q001, data = enem)
+summary(teste)
+TukeyHSD(teste)
+
+enem %>% group_by(Q002) %>%
+  ggplot(aes(x = Q002, y = NOTA_FINAL, fill = Q002)) +
+  geom_boxplot() +
+  labs(x = "Q002") +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+# DAGs AUTOMÁTICO
+
+```{r}
+mygraph <- function(pcgraph){
+  g <- as.bn(pcgraph, check.cycles = F)
+  graphviz.plot(g, shape = "ellipse")
+}
+```
+
+```{r}
+#### matrix pra fixar relação  
+aux = matrix(data = F, ncol = 10, nrow = 10)
+aux[2, 6] = aux[6, 2] = T
+colnames(aux) = rownames(aux) = colnames(as.data.frame(enem2))
+```
+
+## PC
+
+### padrão
+
+```{r}
+### pc
+pcalg_fit_mix1 <- pc(suffStat = as.data.frame(enem2),
+                    indepTest = mixCItest, alpha = 0.05,
+                    labels = colnames(as.data.frame(enem2)), u2pd="relaxed",
+                    skel.method = "stable.fast",
+                    maj.rule = T, solve.confl = T)
+mygraph(pcalg_fit_mix1)
+```
+
+#### pc fixando renda-escola
+
+```{r}
+### pc fixando renda-escola
+pcalg_fit_mix2 = pc(suffStat = as.data.frame(enem2), indepTest = mixCItest,
+                    alpha = 0.05,
+                    labels = colnames(as.data.frame(enem2)), u2pd="relaxed",
+                    skel.method = "stable.fast",
+                    maj.rule = T,  solve.confl = T,
+                    fixedEdges = aux)
+mygraph(pcalg_fit_mix2)
+```
+
+#### pc forçando renda-escola, q001-nota e q002-nota
+
+```{r}
+### pc forçando renda-escola, q001-nota e q002-nota
+aux3 = aux
+aux3[8:9, 1] = aux3[1, 8:9] = T
+
+pcalg_fit3_mix1 = pc(suffStat = as.data.frame(enem2),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem2), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = aux3
+)
+mygraph(pcalg_fit3_mix1)
+```
+
+#### pc fixando renda-escola e q001-nota
+
+```{r}
+#### pc fixando renda-escola e q001-nota
+aux4 = aux
+aux4[8, 1] = aux4[1, 8] = T
+
+pcalg_fit3_mix2 = pc(suffStat = as.data.frame(enem2),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem2), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = aux4
+)
+mygraph(pcalg_fit3_mix2)
+```
+
+#### pc fixando renda-escola e q002-nota
+
+```{r}
+#### pc fixando renda-escola e q002-nota
+aux5 = aux
+aux5[9,1] = aux5[1,9] = T
+
+pcalg_fit3_mix3 = pc(suffStat = as.data.frame(enem2),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem2), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = aux5
+)
+mygraph(pcalg_fit3_mix3)
+```
+
+#### pc fixando q001-nota e q002-nota
+
+```{r}
+#### pc fixando q001-nota e q002-nota
+aux6 = aux
+aux6[,] = F
+aux6[8:9, 1] = aux6[1,8:9] = T
+
+pcalg_fit3_mix4 = pc(suffStat = as.data.frame(enem2),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem2), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = aux6
+)
+mygraph(pcalg_fit3_mix4)
+```
+
+#### pc fixandoq001-nota
+
+```{r}
+aux7 = aux
+aux7[,] = F
+aux7[1,8] = aux7[8,1] = T
+
+#### pc fixandoq001-nota
+pcalg_fit3_mix5 = pc(suffStat = as.data.frame(enem2),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem2), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = aux7
+)
+mygraph(pcalg_fit3_mix5)
+```
+
+#### pc fixando q002-nota
+
+```{r}
+aux8 = aux
+aux8[,] = F
+aux8[1,9] = aux8[9,1] = T
+
+#### pc fixando q002-nota
+pcalg_fit3_mix6 = pc(suffStat = as.data.frame(enem2),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem2), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = aux8
+)
+mygraph(pcalg_fit3_mix6)
+```
+
+### REMOVENDO SEX, LOC, NET
+
+```{r}
+auxB = aux[-c(3, 7, 10), -c(3, 7, 10)] #### removendo variaveis da matrix, fixando renda-escola
+```
+
+#### pc removendo sex loc net
+
+```{r}
+### pc removendo sex loc net
+pcalg_fit2_mix1 <- pc(suffStat = as.data.frame(enem3),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem3), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     # fixedEdges = aux
+)
+mygraph(pcalg2_fit_mix1)
+```
+
+#### pc removendo sex loc net
+
+```{r}
+### pc removendo sex loc net
+pcalg_fit4_mix1 = pc(suffStat = as.data.frame(enem3),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem3), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     # fixedEdges = auxB
+)
+mygraph(pcalg_fit4_mix1)
+```
+
+#### pc removendo sex loc net, fixando renda-escola
+
+```{r}
+### pc removendo sex loc net, fixando renda-escola
+# auxB
+pcalg_fit4_mix3 = pc(suffStat = as.data.frame(enem3),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem3), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = auxB
+)
+mygraph(pcalg_fit4_mix3)
+```
+
+#### pc removendo sex loc net, fixando q001-nota
+
+```{r}
+### pc removendo sex loc net, fixando q001-nota
+auxB2 = auxB
+auxB2[,] = F
+auxB2[1,6] = auxB2[6,1] = T
+
+pcalg_fit4_mix5 = pc(suffStat = as.data.frame(enem3),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem3), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = auxB2
+)
+mygraph(pcalg_fit4_mix5)
+```
+
+#### pc removendo sex loc net, fixando q002-nota
+
+```{r}
+auxB3 = auxB
+auxB3[,] = F
+auxB3[1,7] = auxB3[7,1] = T
+```
+
+
+```{r}
+### pc removendo sex loc net, fixando q002-nota
+pcalg_fit4_mix7 = pc(suffStat = as.data.frame(enem3),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem3), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = auxB3
+)
+mygraph(pcalg_fit4_mix7)
+```
+
+#### pc removendo sex loc net, fixando renda-escola + q001-nota
+
+```{r}
+auxB4 = auxB
+auxB4[1,6] = auxB4[6,1] = T
+auxB4
+```
+
+```{r}
+### pc removendo sex loc net, fixando renda-escola + q001-nota
+pcalg_fit4_mix9 = pc(suffStat = as.data.frame(enem3),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem3), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = auxB4
+)
+mygraph(pcalg_fit4_mix9)
+```
+
+#### pc removendo sex loc net, fixando renda-escola + q002-nota
+
+```{r}
+auxB5 = auxB
+auxB5[1,7] = auxB5[7,1] = T
+auxB5
+```
+
+```{r}
+###pc removendo sex loc net, fixando renda-escola + q002-nota
+auxB5 = auxB
+auxB5[1,7] = auxB5[7,1] = T
+auxB5
+
+pcalg_fit4_mix11 = pc(suffStat = as.data.frame(enem3),
+                      indepTest = mixCItest, alpha = 0.05,
+                      labels = colnames(enem3), u2pd="relaxed",
+                      skel.method = "stable.fast",
+                      maj.rule = T, solve.confl = T,
+                      fixedEdges = auxB5
+)
+mygraph(pcalg_fit4_mix11)
+```
+
+#### pc removendo sex loc net, fixando q001-nota + q002-nota
+
+```{r}
+auxB6 = auxB
+auxB6[,] = F
+auxB6[1,6:7] = auxB6[6:7,1] = T
+auxB6
+```
+
+```{r}
+### pc removendo sex loc net, fixando q001-nota + q002-nota
+
+pcalg_fit4_mix13 = pc(suffStat = as.data.frame(enem3),
+                      indepTest = mixCItest, alpha = 0.05,
+                      labels = colnames(enem3), u2pd="relaxed",
+                      skel.method = "stable.fast",
+                      maj.rule = T, solve.confl = T,
+                      fixedEdges = auxB6
+)
+mygraph(pcalg_fit4_mix13)
+```
+
+#### pc removendo sex loc net, fixando renda-escola + q001-nota + q002-nota
+
+```{r}
+auxB7 = auxB
+auxB7[1,6:7] = auxB7[6:7,1] = T
+auxB7
+```
+
+```{r}
+#### pc removendo sex loc net, fixando renda-escola + q001-nota + q002-nota
+pcalg_fit4_mix15 = pc(suffStat = as.data.frame(enem3),
+                      indepTest = mixCItest, alpha = 0.05,
+                      labels = colnames(enem3), u2pd="relaxed",
+                      skel.method = "stable.fast",
+                      maj.rule = T, solve.confl = T,
+                      fixedEdges = auxB7
+)
+mygraph(pcalg_fit4_mix15)
+```
+
+### TAMBÉM REMOVENDO ESCOLARIDADE DO PAI (q001)
+
+```{r}
+auxC = auxB[-6, -6]
+```
+
+```{r}
+### pc tambem removendo q001
+pcalg_fit5_mix1 = pc(suffStat = as.data.frame(enem4),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem4), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     # fixedEdges = auxB
+)
+mygraph(pcalg_fit5_mix1)
+```
+
+
+#### pc tambem removendo q001, fixando renda-escola
+
+```{r}
+### pc tambem removendo q001, fixando renda-escola
+# auxC
+pcalg_fit5_mix3 = pc(suffStat = as.data.frame(enem4),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem4), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = auxC
+)
+mygraph(pcalg_fit5_mix3)
+```
+
+#### pc tambem removendo q001, fixando q002-nota
+
+```{r}
+### pc tambem removendo q001, fixando q002-nota
+# auxC
+auxC2 = auxC
+auxC2[,] = F
+auxC2[1,6] = auxC2[6,1] = T
+```
+
+```{r}
+### pc tambem removendo q001, fixando q002-nota
+pcalg_fit5_mix5 = pc(suffStat = as.data.frame(enem4),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem4), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = auxC2
+)
+mygraph(pcalg_fit5_mix5)
+```
+
+#### pc também removendo q001, fixando renda-escola + q002-nota
+
+```{r}
+### pc também removendo q001, fixando renda-escola + q002-nota
+# auxC
+auxC3 = auxC
+auxC3[1,6] = auxC3[6,1] = T
+auxC3
+```
+
+```{r}
+### pc também removendo q001, fixando renda-escola + q002-nota
+pcalg_fit5_mix7 = pc(suffStat = as.data.frame(enem4),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem4), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     fixedEdges = auxC3
+)
+mygraph(pcalg_fit5_mix7)
+```
+
+
+## FCI
+
+### padrão
+
+```{r}
+### fci
+pcalg_fit_mix3 <- fci(suffStat = as.data.frame(enem2), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem2)),
+                      skel.method = "stable.fast",
+                      maj.rule = T)
+
+plot(pcalg_fit_mix3)
+```
+
+#### fci fixando renda-escola
+
+```{r}
+### fci fixando renda-escola
+pcalg_fit_mix4 <- fci(suffStat = as.data.frame(enem2), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem2)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = aux)
+plot(pcalg_fit_mix4)
+```
+
+#### fci fixando renda-escola e q002-nota
+
+```{r}
+# aux5
+pcalg_fit3_mix9 = fci(suffStat = as.data.frame(enem2), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem2)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = aux5)
+plot(pcalg_fit3_mix9)
+```
+
+#### fci fixando q001-nota
+
+```{r}
+#### fci fixando q001-nota
+# aux7
+pcalg_fit3_mix11 = fci(suffStat = as.data.frame(enem2), indepTest = mixCItest,
+                       alpha = 0.05,
+                       labels = colnames(as.data.frame(enem2)),
+                       skel.method = "stable.fast",
+                       maj.rule = T,
+                       fixedEdges = aux7)
+plot(pcalg_fit3_mix11)
+```
+
+#### fci fixando renda-escola e q001-nota
+
+```{r}
+#### fci fixando renda-escola e q001-nota
+aux4 = aux
+aux4[8, 1] = aux4[1, 8] = T
+
+pcalg_fit3_mix13 = fci(suffStat = as.data.frame(enem2), indepTest = mixCItest,
+                       alpha = 0.05,
+                       labels = colnames(as.data.frame(enem2)),
+                       skel.method = "stable.fast",
+                       maj.rule = T,
+                       fixedEdges = aux4)
+plot(pcalg_fit3_mix13)
+```
+
+### fci removendo sex loc net
+
+```{r}
+### fci removendo sex loc net
+pcalg_fit4_mix2 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem3)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      # fixedEdges = auxB
+)
+plot(pcalg_fit4_mix2)
+```
+
+#### fci removendo sex loc net, fixando renda-escola
+
+```{r}
+### fci removendo sex loc net, fixando renda-escola
+# auxB
+pcalg_fit4_mix4 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem3)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = auxB
+)
+plot(pcalg_fit4_mix4)
+```
+
+#### fci removendo sex loc net, fixando q001-nota
+
+```{r}
+### fci removendo sex loc net, fixando q001-nota
+# auxB2
+pcalg_fit4_mix6 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem3)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = auxB2
+)
+plot(pcalg_fit4_mix6)
+```
+
+#### fci removendo sex loc net, fixando q002-nota
+
+```{r}
+### fci removendo sex loc net, fixando q002-nota
+# auxB3
+pcalg_fit4_mix8 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem3)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = auxB3
+)
+plot(pcalg_fit4_mix8)
+```
+
+#### fci removendo sex loc net, fixando renda-escola + q001-nota
+
+```{r}
+### fci removendo sex loc net, fixando renda-escola + q001-nota
+# auxB4
+pcalg_fit4_mix10 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                       alpha = 0.05,
+                       labels = colnames(as.data.frame(enem3)),
+                       skel.method = "stable.fast",
+                       maj.rule = T,
+                       fixedEdges = auxB4
+)
+plot(pcalg_fit4_mix10)
+```
+
+#### fci removendo sex loc net, fixando renda-escola + q001-nota
+
+```{r}
+### fci removendo sex loc net, fixando renda-escola + q001-nota
+# auxB5
+pcalg_fit4_mix12 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                       alpha = 0.05,
+                       labels = colnames(as.data.frame(enem3)),
+                       skel.method = "stable.fast",
+                       maj.rule = T,
+                       fixedEdges = auxB5
+)
+plot(pcalg_fit4_mix12)
+```
+
+#### fci removendo sex loc net, fixando q001-nota + q002-nota
+
+```{r}
+### fci removendo sex loc net, fixando q001-nota + q002-nota
+# auxB6
+pcalg_fit4_mix14 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                       alpha = 0.05,
+                       labels = colnames(as.data.frame(enem3)),
+                       skel.method = "stable.fast",
+                       maj.rule = T,
+                       fixedEdges = auxB6
+)
+plot(pcalg_fit4_mix14)
+```
+
+#### fci removendo sex loc net, fixando renda-escola + q001-nota + q002-nota
+
+```{r}
+### fci removendo sex loc net, fixando renda-escola + q001-nota + q002-nota
+# auxB7
+
+pcalg_fit4_mix16 = fci(suffStat = as.data.frame(enem3), indepTest = mixCItest,
+                       alpha = 0.05,
+                       labels = colnames(as.data.frame(enem3)),
+                       skel.method = "stable.fast",
+                       maj.rule = T,
+                       fixedEdges = auxB7
+)
+plot(pcalg_fit4_mix16)
+```
+
+### fci tambem removendo q001
+
+```{r}
+pcalg_fit5_mix2 = fci(suffStat = as.data.frame(enem4), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem4)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      # fixedEdges = auxB
+)
+plot(pcalg_fit5_mix2)
+```
+
+#### fci tambem removendo q001, fixando renda-escola
+
+```{r}
+### fci tambem removendo q001, fixando renda-escola
+# auxC
+pcalg_fit5_mix4 = fci(suffStat = as.data.frame(enem4), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem4)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = auxC
+)
+plot(pcalg_fit5_mix4)
+```
+
+#### fci tambem removendo q001, fixando q002-nota
+
+```{r}
+### fci tambem removendo q001, fixando q002-nota
+pcalg_fit5_mix6 = fci(suffStat = as.data.frame(enem4), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem4)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = auxC2
+)
+plot(pcalg_fit5_mix6)
+```
+
+#### fci também removendo q001, fixando renda-escola + q002-nota
+
+```{r}
+### fci também removendo q001, fixando renda-escola + q002-nota
+# auxC3
+pcalg_fit5_mix8 = fci(suffStat = as.data.frame(enem4), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(as.data.frame(enem4)),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      fixedEdges = auxC3
+)
+plot(pcalg_fit5_mix8)
+```
+
+## hill-climbing
+
+### padrão
+
+```{r}
+#### fixando (wL) / barrando (bl) relações para o hill-climbing
+
+wl = matrix(c("CRIT", "ESC"),
+            ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+wl1 = matrix(c("CRIT", "NOTA"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+wl2 = matrix(c("Q001", "NOTA"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+wl3 = matrix(c("Q002", "NOTA"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+wl4 = matrix(c("Q001", "NOTA", "Q002", "NOTA"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+wl5 = matrix(c("CRIT", "ESC", "Q001", "NOTA"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+wl6 = matrix(c("CRIT", "ESC", "Q002", "NOTA"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+wl7 = matrix(c("CRIT", "ESC", "Q001", "NOTA", "Q002", "NOTA"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+bl1 = matrix(c("CRIT", "SEX", "NET", "SEX", "ESC", "SEX", "COR", "SEX",
+               "Q001", "SEX", "Q002", "SEX", "ESC", "CRIT", "CRIT", "COR",
+               "ESC", "Q001", "ESC", "Q002", "SEX", "COR", "SEX", "CRIT",
+               "NET", "LOC", "REG", "SEX", "LOC", "SEX"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+bnlearn_hc = bnlearn::hc(enem2, 
+                         whitelist = wl2,
+                         blacklist = bl1
+)
+graphviz.plot(bnlearn_hc, shape = "ellipse"
+              # , highlight = list(arcs = wl)
+)
+```
+
+### hill-climbing removendo sex loc net
+
+```{r}
+bl2 = matrix(c("ESC", "Q001", "ESC", "Q002", "ESC", "COR", "ESC", "CRIT",
+               "CRIT", "COR"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+bnlearn_hc = bnlearn::hc(enem3, 
+                         # whitelist = wl2,
+                         blacklist = bl2
+)
+graphviz.plot(bnlearn_hc, shape = "ellipse"
+              # , highlight = list(arcs = wl)
+)
+```
+
+### hill-climbing também removendo q001
+
+```{r}
+bl3 = matrix(c("ESC", "Q002", "ESC", "COR", "ESC", "CRIT",
+               "CRIT", "COR"),
+             ncol = 2, byrow = TRUE, dimnames = list(NULL, c("from", "to")))
+
+bnlearn_hc = bnlearn::hc(enem4, 
+                         # whitelist = wl2,
+                         blacklist = bl3
+)
+graphviz.plot(bnlearn_hc, shape = "ellipse"
+              # , highlight = list(arcs = wl)
+)
+```
+
+## AGRUPANDO Q002-B COM Q002-H
+
+### pc agrupando escolaridade da mãe
+
+```{r}
+### pc agrupando escolaridade da mãe
+pcalg_fit6_mix1 = pc(suffStat = as.data.frame(enem2 %>% mutate(Q102 = fct_collapse(Q002, B = c("B", "H"))) %>% select(-c(Q001, Q002, SEX, LOC, NET))),
+                     indepTest = mixCItest, alpha = 0.05,
+                     labels = colnames(enem2 %>% mutate(Q102 = fct_collapse(Q002, B = c("B", "H"))) %>% select(-c(Q001, Q002, SEX, LOC, NET))), u2pd="relaxed",
+                     skel.method = "stable.fast",
+                     maj.rule = T, solve.confl = T,
+                     # fixedEdges = auxC3
+)
+mygraph(pcalg_fit6_mix1)
+```
+
+### fci agrupando escolaridade da mãe
+
+```{r}
+### fci agrupando escolaridade da mãe
+pcalg_fit6_mix2 = fci(suffStat = as.data.frame(enem2 %>% mutate(Q102 = fct_collapse(Q002, B = c("B", "H"))) %>% select(-c(Q001, Q002, SEX, LOC, NET))), indepTest = mixCItest,
+                      alpha = 0.05,
+                      labels = colnames(enem2 %>% mutate(Q102 = fct_collapse(Q002, B = c("B", "H"))) %>% select(-c(Q001, Q002, SEX, LOC, NET))),
+                      skel.method = "stable.fast",
+                      maj.rule = T,
+                      # fixedEdges = auxC3
+)
+plot(pcalg_fit6_mix2)
+```
